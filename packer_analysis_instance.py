@@ -1,10 +1,15 @@
 import os
 import requests
 
-from mass_client import FileAnalysisClient, temporary_sample_file
+import mass_api_client
+from mass_api_client import resources as mass
 from common_analysis_yara import CommonAnalysisYara
+from mass_api_client.utils import *
+import logging
 
-YARA_RULES_URL = 'https://raw.githubusercontent.com/Yara-Rules/rules/master/packer.yar'
+logging.basicConfig(level=logging.INFO)
+
+YARA_RULES_URL = 'https://raw.githubusercontent.com/Yara-Rules/rules/master/Packers/packer.yar'
 PACKER_FAMILIES = [
     'armadillo',
     'acprotect',
@@ -47,18 +52,35 @@ def _get_packer_families(matched_rule_string):
     return result
 
 
-class PackerAnalysisInstance(FileAnalysisClient):
-    def __init__(self, config_object):
-        super(PackerAnalysisInstance, self).__init__(config_object)
+class PackerAnalysisInstance():
+    def __init__(self):
         result = requests.get(YARA_RULES_URL)
         self.yara = CommonAnalysisYara(yara_rules_string=result.text)
 
-    def do_analysis(self, analysis_request):
-        with temporary_sample_file(self.sample_dict) as file:
-            yara_report = self.yara.analyze_file(file)
+    def do_analysis(self, scheduled_analysis):
+        logging.info('Processing {}'.format(scheduled_analysis))
+        sample = scheduled_analysis.get_sample()
+        with sample.temporary_file() as sample_file:
+            yara_report = self.yara.analyze_file(sample_file.name)
             tags = []
             for match in yara_report['yara_result']:
                 tags.append('packer:' + match.rule)
                 packer_families = _get_packer_families(match.rule)
                 tags.extend(packer_families)
-            self.submit_report(analysis_request['url'], tags=tags, additional_metadata={'yara_result': str(yara_report['yara_result'])})
+            logging.info('Submitting report. Adding tags {}'.format(tags))
+            scheduled_analysis.create_report(tags=tags, additional_metadata={'yara_result': str(yara_report['yara_result'])})
+
+if __name__ == "__main__"   :
+    mass_api_client.ConnectionManager().register_connection(
+            'default', 
+            'IjU5ZDM3Yzc0NmFlY2RmN2MzNGIzYjAyMiI.WhU92Ly9Tq4fc63l0qKfl944Jj4', 
+            'http://localhost:8000/api/', 
+            timeout=6
+            )
+
+    analysis_system_instance = get_or_create_analysis_system_instance(identifier='packerdetection',
+                                                                      verbose_name= 'packerdetection - Check if an executable binary sample was packed.',
+                                                                      tag_filter_exp='sample-type:executablebinarysample',
+                                                                      )
+    packer_detection = PackerAnalysisInstance()
+    process_analyses(analysis_system_instance, packer_detection.do_analysis, sleep_time=7)
