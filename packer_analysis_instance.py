@@ -71,12 +71,12 @@ class PackerAnalysisInstance():
             scheduled_analysis.create_report(tags=tags, additional_metadata={'yara_result': str(yara_report['yara_result'])})
 
 if __name__ == "__main__"   :
-    mass_api_client.ConnectionManager().register_connection(
-            'default', 
-            'IjU5ZDM3Yzc0NmFlY2RmN2MzNGIzYjAyMiI.WhU92Ly9Tq4fc63l0qKfl944Jj4', 
-            'http://localhost:8000/api/', 
-            timeout=6
-            )
+    api_key = os.getenv('MASS_API_KEY', '')
+    logger.info('Got API KEY {}'.format(api_key))
+    server_addr = os.getenv('MASS_SERVER', 'http://localhost:8000/api/')
+    logger.info('Connecting to {}'.format(server_addr))
+    timeout = int(os.getenv('MASS_TIMEOUT', '60'))
+    mass_api_client.ConnectionManager().register_connection('default', api_key, server_addr, timeout=timeout)
 
     analysis_system_instance = get_or_create_analysis_system_instance(identifier='packerdetection',
                                                                       verbose_name= 'packerdetection - Check if an executable binary sample was packed.',
