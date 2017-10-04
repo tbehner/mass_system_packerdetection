@@ -79,7 +79,7 @@ if __name__ == "__main__"   :
     mass_api_client.ConnectionManager().register_connection('default', api_key, server_addr, timeout=timeout)
 
     analysis_system_instance = get_or_create_analysis_system_instance(identifier='packerdetection',
-                                                                      verbose_name= 'packerdetection - Check if an executable binary sample was packed.',
+                                                                      verbose_name= 'PackerDetection',
                                                                       tag_filter_exp='sample-type:executablebinarysample',
                                                                       )
     packer_detection = PackerAnalysisInstance()
