@@ -8,6 +8,8 @@ from mass_api_client.utils import *
 import logging
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('Packerdetection')
+logger.setLevel(logging.INFO)
 
 YARA_RULES_URL = 'https://raw.githubusercontent.com/Yara-Rules/rules/master/Packers/packer.yar'
 PACKER_FAMILIES = [
@@ -54,7 +56,12 @@ def _get_packer_families(matched_rule_string):
 
 class PackerAnalysisInstance():
     def __init__(self):
-        result = requests.get(YARA_RULES_URL)
+        try:
+            result = requests.get(YARA_RULES_URL)
+        except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout):
+            yara_file = './packer.yar'
+            result = open(yara_file, 'r').read()
+            logger.info('Could not go online for fresh yara rules. Using {}'.format(yara_file))
         self.yara = CommonAnalysisYara(yara_rules_string=result.text)
 
     def do_analysis(self, scheduled_analysis):
